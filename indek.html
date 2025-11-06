@@ -1,0 +1,445 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>🎯 Tic Tac Toe - Lawan Komputer</title>
+  <style>
+    /* ================== Reset & base ================== */
+    :root{
+      --bg:#070617;
+      --neon-blue:#00d4ff;
+      --neon-purple:#b85cff;
+      --panel: rgba(255,255,255,0.03);
+      --glass: rgba(255,255,255,0.04);
+      --glass-2: rgba(255,255,255,0.02);
+      --glass-border: rgba(255,255,255,0.06);
+      --win-glow: 0 0 30px rgba(184,92,255,0.8), inset 0 0 20px rgba(0,212,255,0.06);
+      font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      background: radial-gradient(1200px 600px at 10% 10%, rgba(0,212,255,0.06), transparent),
+                  radial-gradient(900px 500px at 90% 90%, rgba(184,92,255,0.06), transparent),
+                  var(--bg);
+      color:#e9eef8;
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:4vmin;
+    }
+
+    /* Container */
+    .app{
+      width:min(720px, 96vw);
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+      border:1px solid var(--glass-border);
+      border-radius:18px;
+      padding:2.5vmin;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+      display:grid;
+      grid-template-columns: 1fr 300px;
+      gap:1.5vmin;
+      backdrop-filter: blur(6px) saturate(120%);
+    }
+    @media (max-width:900px){
+      .app{grid-template-columns:1fr;}
+    }
+
+    /* Header */
+    .header{
+      grid-column:1 / -1;
+      display:flex;align-items:center;justify-content:space-between;
+      gap:1vmin;margin-bottom:1vmin
+    }
+    .title{font-size:clamp(18px,3.5vmin,26px);display:flex;align-items:center;gap:0.8ch}
+    .title span{filter:drop-shadow(0 4px 18px rgba(0,212,255,0.16));}
+
+    /* Sound toggle */
+    .controls{display:flex;gap:10px;align-items:center}
+    .icon-btn{
+      background:var(--glass);
+      border:1px solid var(--glass-border);
+      padding:8px;border-radius:10px;cursor:pointer;
+      display:inline-grid;place-items:center;width:44px;height:44px
+    }
+    .icon-btn.active{box-shadow: var(--win-glow)}
+
+    /* Board area */
+    .board-wrap{display:flex;flex-direction:column;align-items:center;gap:1.25vmin;padding:1vmin}
+    .board{
+      width:clamp(260px,40vmin,420px);
+      height:clamp(260px,40vmin,420px);
+      display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);
+      gap:8px;padding:8px;border-radius:14px;background:linear-gradient(180deg,var(--panel),transparent);
+      border:1px solid var(--glass-border);
+      box-shadow: 0 6px 30px rgba(0,0,0,0.5);
+    }
+    .cell{
+      background:linear-gradient(180deg,var(--glass-2),transparent);
+      border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:clamp(28px,7vmin,72px);
+      cursor:pointer;user-select:none;position:relative;transition:transform 180ms ease, box-shadow 180ms;
+      border:1px solid rgba(255,255,255,0.03);
+    }
+    .cell:active{transform:scale(0.98)}
+    .cell:hover{box-shadow: 0 6px 24px rgba(0,0,0,0.45)}
+
+    /* Neon X & O */
+    .x, .o{pointer-events:none}
+    .x{color:var(--neon-blue);text-shadow:0 6px 30px rgba(0,212,255,0.12)}
+    .o{color:var(--neon-purple);text-shadow:0 6px 30px rgba(184,92,255,0.12)}
+
+    /* Result banner */
+    .result{
+      margin-top:1vmin;min-height:48px;display:flex;align-items:center;justify-content:center;width:100%;
+      font-size:clamp(16px,2.6vmin,22px);opacity:0;transform:translateY(6px);transition:all 360ms cubic-bezier(.2,.9,.2,1);
+    }
+    .result.show{opacity:1;transform:none}
+
+    /* Right panel */
+    .panel{padding:1vmin;border-radius:12px;background:linear-gradient(180deg, rgba(255,255,255,0.02), transparent);border:1px solid var(--glass-border);display:flex;flex-direction:column;gap:10px}
+    .panel h3{margin:0;font-size:14px;color:#cfeeff}
+    .stats{display:flex;gap:8px;flex-wrap:wrap}
+    .stat{flex:1;background:rgba(255,255,255,0.02);padding:10px;border-radius:10px;text-align:center}
+
+    /* Buttons */
+    .btn{padding:10px 12px;border-radius:12px;border:1px solid var(--glass-border);background:linear-gradient(180deg,rgba(255,255,255,0.02),transparent);cursor:pointer}
+    .btn.primary{background:linear-gradient(90deg,var(--neon-blue),var(--neon-purple));color:#041;box-shadow:var(--win-glow);border:none}
+
+    /* Winning highlight */
+    .win{animation:winPulse 700ms ease;}
+    @keyframes winPulse{0%{transform:scale(1)}50%{transform:scale(1.03)}100%{transform:scale(1)}}
+
+    /* line animation (when someone wins) */
+    .line{
+      position:absolute;pointer-events:none;inset:0;display:flex;align-items:center;justify-content:center;
+    }
+    .glow-line{height:10px;background:linear-gradient(90deg,var(--neon-blue),var(--neon-purple));width:0;border-radius:6px;box-shadow:0 0 30px rgba(0,212,255,0.25);transition:width 500ms ease}
+    .glow-line.show{width:90%}
+
+    footer{grid-column:1 / -1;text-align:center;opacity:0.6;font-size:12px;margin-top:6px}
+  </style>
+</head>
+<body>
+  <main class="app" role="application" aria-label="Tic Tac Toe - Lawan Komputer">
+    <div class="header">
+      <div class="title"><span>🎯</span><div style="display:flex;flex-direction:column;line-height:1">
+        <strong style="font-weight:700">Tic Tac Toe - Lawan Komputer</strong>
+        <small style="opacity:0.7;font-size:12px">Desain neon biru & ungu — Responsive</small>
+      </div></div>
+
+      <div class="controls">
+        <button id="musicToggle" class="icon-btn" title="Toggle music">🔊</button>
+      </div>
+    </div>
+
+    <section class="board-wrap">
+      <div id="board" class="board" role="grid" aria-label="Papan Tic Tac Toe">
+        <!-- 9 cells inserted by JS -->
+      </div>
+      <div class="result" id="result" aria-live="polite"></div>
+      <div style="display:flex;gap:8px;margin-top:6px">
+        <button id="resetBtn" class="btn">Reset</button>
+        <button id="playAgain" class="btn primary" style="display:none">Main Lagi</button>
+      </div>
+      <div class="line"><div id="glowLine" class="glow-line"></div></div>
+    </section>
+
+    <aside class="panel">
+      <h3>Statistik</h3>
+      <div class="stats">
+        <div class="stat"><div style="font-size:18px;">Kamu</div><div id="scorePlayer">0</div></div>
+        <div class="stat"><div style="font-size:18px;">Komputer</div><div id="scoreAI">0</div></div>
+        <div class="stat"><div style="font-size:18px;">Seri</div><div id="scoreTie">0</div></div>
+      </div>
+
+      <div style="margin-top:8px">
+        <h3>Pengaturan AI</h3>
+        <p style="margin:4px 0 8px">Pilih kesulitan AI:</p>
+        <select id="difficulty" class="btn" style="width:100%">
+          <option value="easy">Mudah (acak)</option>
+          <option value="medium" selected>Sedang (heuristik + blok)</option>
+          <option value="hard">Sulit (Minimax)</option>
+        </select>
+      </div>
+
+      <div style="margin-top:auto">
+        <small style="opacity:0.7">Tip: Klik papan untuk memulai. Musik mungkin perlu diaktifkan jika browser memblokir autoplay.</small>
+      </div>
+    </aside>
+
+    <footer>© 2025 — Built with vanilla JS · Responsive · Neon UI</footer>
+  </main>
+
+  <script>
+    /* ======= Game state ======= */
+    const boardEl = document.getElementById('board');
+    const resultEl = document.getElementById('result');
+    const glowLine = document.getElementById('glowLine');
+    const scorePlayerEl = document.getElementById('scorePlayer');
+    const scoreAIEl = document.getElementById('scoreAI');
+    const scoreTieEl = document.getElementById('scoreTie');
+    const resetBtn = document.getElementById('resetBtn');
+    const playAgainBtn = document.getElementById('playAgain');
+    const difficultySel = document.getElementById('difficulty');
+    const musicToggle = document.getElementById('musicToggle');
+
+    let board = Array(9).fill(null);
+    let currentPlayer = 'X'; // Player is X, AI is O
+    let gameOver = false;
+    let scores = {player:0, ai:0, tie:0};
+
+    /* ======= Audio via WebAudio (no external files) ======= */
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    const audioCtx = AudioContext ? new AudioContext() : null;
+    let bgGain, bgOsc1, bgOsc2, musicOn = true;
+
+    function setupBackgroundSound(){
+      if(!audioCtx) return;
+      // create layered ambient pads
+      bgGain = audioCtx.createGain(); bgGain.gain.value = 0.02; bgGain.connect(audioCtx.destination);
+      bgOsc1 = audioCtx.createOscillator(); bgOsc1.type = 'sine'; bgOsc1.frequency.value = 100; // low
+      bgOsc2 = audioCtx.createOscillator(); bgOsc2.type = 'sine'; bgOsc2.frequency.value = 220; // harmonic
+      const lfo = audioCtx.createOscillator(); lfo.type='sine'; lfo.frequency.value = 0.07;
+      const lfoGain = audioCtx.createGain(); lfoGain.gain.value = 8;
+      lfo.connect(lfoGain);
+      const filter = audioCtx.createBiquadFilter(); filter.type='lowpass'; filter.frequency.value=1200;
+      bgOsc1.connect(filter); bgOsc2.connect(filter); filter.connect(bgGain);
+      lfoGain.connect(bgOsc1.frequency);
+      lfoGain.connect(bgOsc2.frequency);
+      bgOsc1.start(); bgOsc2.start(); lfo.start();
+      // try autoplay; browsers might block — we'll catch it on first play attempt
+    }
+
+    function tryStartAudio(){
+      if(!audioCtx) return;
+      if(audioCtx.state === 'suspended'){
+        audioCtx.resume().then(()=>{
+          if(!bgOsc1) setupBackgroundSound();
+          musicOn = true; musicToggle.textContent = '🔊'; musicToggle.classList.add('active');
+        }).catch(()=>{/*ignored*/});
+      } else {
+        if(!bgOsc1) setupBackgroundSound();
+        musicOn = true; musicToggle.textContent = '🔊'; musicToggle.classList.add('active');
+      }
+    }
+
+    function stopBackgroundSound(){
+      if(!audioCtx) return;
+      // fade out
+      if(bgGain) { const now = audioCtx.currentTime; bgGain.gain.cancelScheduledValues(now); bgGain.gain.linearRampToValueAtTime(0, now+0.5); }
+      musicOn = false; musicToggle.textContent = '🔇'; musicToggle.classList.remove('active');
+    }
+
+    function clickSound(){
+      if(!audioCtx || !musicOn) return;
+      const o = audioCtx.createOscillator(); const g = audioCtx.createGain();
+      o.type='triangle'; o.frequency.value = 800; g.gain.value = 0.0018; // subtle
+      o.connect(g); g.connect(audioCtx.destination);
+      o.start();
+      g.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 0.25);
+      o.stop(audioCtx.currentTime + 0.3);
+    }
+
+    function winSound(){
+      if(!audioCtx) return;
+      const o = audioCtx.createOscillator(); const g = audioCtx.createGain();
+      o.type='sine'; o.frequency.value = 420; g.gain.value = 0.005;
+      o.connect(g); g.connect(audioCtx.destination);
+      o.start();
+      o.frequency.linearRampToValueAtTime(720, audioCtx.currentTime+0.45);
+      g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime+0.6);
+      o.stop(audioCtx.currentTime+0.65);
+    }
+
+    /* ======= UI building ======= */
+    function makeBoard(){
+      boardEl.innerHTML='';
+      for(let i=0;i<9;i++){
+        const cell = document.createElement('div');
+        cell.className='cell'; cell.dataset.index=i; cell.setAttribute('role','button');
+        cell.setAttribute('aria-label', 'Kotak '+(i+1));
+        cell.addEventListener('click', onCellClick);
+        boardEl.appendChild(cell);
+      }
+    }
+
+    function render(){
+      document.querySelectorAll('.cell').forEach((el,i)=>{
+        el.innerHTML=''; el.classList.remove('win');
+        const val = board[i];
+        if(val){
+          const span = document.createElement('div'); span.className = val === 'X' ? 'x' : 'o'; span.textContent = val;
+          el.appendChild(span);
+        }
+      });
+    }
+
+    /* ======= Game logic ======= */
+    const wins = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+
+    function checkWinner(bd){
+      for(const line of wins){
+        const [a,b,c] = line;
+        if(bd[a] && bd[a] === bd[b] && bd[a] === bd[c]) return {winner:bd[a], line};
+      }
+      if(bd.every(Boolean)) return {winner:'tie'};
+      return null;
+    }
+
+    function showResult(text){
+      resultEl.textContent = text; resultEl.classList.add('show');
+      setTimeout(()=>resultEl.classList.remove('show'),3000);
+    }
+
+    function highlightLine(line){
+      // Add glow to winning cells and animate line width
+      document.querySelectorAll('.cell').forEach((el,idx)=>{ if(line.includes(idx)) el.classList.add('win'); });
+      glowLine.classList.add('show');
+      setTimeout(()=>glowLine.classList.remove('show'),900);
+    }
+
+    function onCellClick(e){
+      if(gameOver) return;
+      const idx = +e.currentTarget.dataset.index;
+      if(board[idx]) return; // ocuppied
+      board[idx] = 'X';
+      clickSound();
+      render();
+      const res = checkWinner(board);
+      if(res){ endGame(res); return; }
+      // AI turn
+      currentPlayer = 'O';
+      setTimeout(()=>aiMove(), 300);
+    }
+
+    /* ======= AI ======= */
+    function aiMove(){
+      if(gameOver) return;
+      const difficulty = difficultySel.value;
+      let move;
+      if(difficulty === 'easy'){
+        const empties = board.map((v,i)=>v?null:i).filter(v=>v!==null);
+        move = empties[Math.floor(Math.random()*empties.length)];
+      } else if(difficulty === 'medium'){
+        // try win, block, else strategic center/corners
+        move = findWinningMove('O') ?? findWinningMove('X') ?? (board[4] ? null : 4) ?? pickBestAvailable();
+      } else {
+        move = minimaxRoot(board, 'O');
+      }
+      if(move == null){ move = pickBestAvailable(); }
+      board[move] = 'O';
+      clickSound();
+      render();
+      const res = checkWinner(board);
+      if(res){ endGame(res); return; }
+      currentPlayer = 'X';
+    }
+
+    function findWinningMove(player){
+      for(let i=0;i<9;i++){
+        if(!board[i]){
+          board[i] = player;
+          const r = checkWinner(board);
+          board[i] = null;
+          if(r && r.winner === player) return i;
+        }
+      }
+      return null;
+    }
+
+    function pickBestAvailable(){
+      // preference: center, corners, sides
+      const prefs = [4,0,2,6,8,1,3,5,7];
+      for(const p of prefs) if(!board[p]) return p;
+      return board.findIndex(v=>!v);
+    }
+
+    // Minimax implementation (returns index)
+    function minimaxRoot(newBoard, player){
+      const avail = newBoard.map((v,i)=>v?null:i).filter(v=>v!==null);
+      let bestVal = -Infinity; let bestMove = null;
+      for(const i of avail){
+        newBoard[i] = player;
+        const val = minimax(newBoard, 0, false);
+        newBoard[i] = null;
+        if(val > bestVal){ bestVal = val; bestMove = i; }
+      }
+      return bestMove;
+    }
+
+    function minimax(boardState, depth, isMaximizing){
+      const res = checkWinner(boardState);
+      if(res){
+        if(res.winner === 'O') return 10 - depth;
+        if(res.winner === 'X') return depth - 10;
+        return 0;
+      }
+      const avail = boardState.map((v,i)=>v?null:i).filter(v=>v!==null);
+      if(isMaximizing){
+        let best = -Infinity;
+        for(const i of avail){ boardState[i] = 'O'; best = Math.max(best, minimax(boardState, depth+1, false)); boardState[i] = null; }
+        return best;
+      } else {
+        let best = Infinity;
+        for(const i of avail){ boardState[i] = 'X'; best = Math.min(best, minimax(boardState, depth+1, true)); boardState[i] = null; }
+        return best;
+      }
+    }
+
+    function endGame(res){
+      gameOver = true;
+      if(res.winner === 'X'){
+        showResult('🎉 Kamu Menang!');
+        scores.player++;
+        winSound();
+      } else if(res.winner === 'O'){
+        showResult('☠️ Komputer Menang!');
+        scores.ai++;
+        winSound();
+      } else {
+        showResult('🤝 Seri!');
+        scores.tie++;
+      }
+      scorePlayerEl.textContent = scores.player;
+      scoreAIEl.textContent = scores.ai;
+      scoreTieEl.textContent = scores.tie;
+      if(res.line) highlightLine(res.line);
+      playAgainBtn.style.display = 'inline-block';
+    }
+
+    /* ======= Controls ======= */
+    resetBtn.addEventListener('click', ()=>{
+      board = Array(9).fill(null); gameOver=false; render(); resultEl.classList.remove('show'); playAgainBtn.style.display='none';
+    });
+    playAgainBtn.addEventListener('click', ()=>{ resetBtn.click(); });
+
+    musicToggle.addEventListener('click', ()=>{
+      if(!audioCtx){ alert('Audio tidak didukung di browser ini.'); return; }
+      if(!musicOn){ tryStartAudio(); } else { stopBackgroundSound(); }
+    });
+
+    // initialize
+    makeBoard(); render();
+    // try to autoplay background (may be blocked)
+    tryStartAudio();
+
+    // Attempt to start audio on first user gesture (safer for autoplay policy)
+    ['click','touchstart','keydown'].forEach(ev=>document.addEventListener(ev, function once(){ if(audioCtx && audioCtx.state === 'suspended'){ audioCtx.resume(); } document.removeEventListener(ev, once); }));
+
+    // light accessibility: keyboard navigation
+    document.addEventListener('keydown', (e)=>{
+      if(gameOver) return;
+      if(e.key >= '1' && e.key <= '9'){
+        const idx = parseInt(e.key,10)-1; document.querySelectorAll('.cell')[idx].click();
+      }
+    });
+
+    // small UX: if user lands and picks AI hard immediately, AI should not move until user does first move.
+  </script>
+</body>
+</html>
